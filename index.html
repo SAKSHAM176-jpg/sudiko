@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sudoku Solver — Recursive Backtracking Visualizer</title>
+  <meta name="description" content="An interactive 9×9 Sudoku solver built with vanilla JavaScript. Visualizes a recursive backtracking algorithm with constraint validation via hash sets." />
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Google Fonts: Space Grotesk (display/UI) + JetBrains Mono (data/grid) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ============ NAVBAR ============ -->
+  <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="#top">
+        <span class="brand-mark">9×9</span> Sudoku Solver
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navMenu">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="#solver">Solver</a></li>
+          <li class="nav-item"><a class="nav-link" href="#how-it-works">How it Works</a></li>
+          <li class="nav-item"><a class="nav-link" href="#complexity">Complexity</a></li>
+          <li class="nav-item">
+            <a class="nav-link nav-link--cta" href="https://github.com/" target="_blank" rel="noopener">View on GitHub</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ============ HERO ============ -->
+  <header id="top" class="hero">
+    <div class="container">
+      <div class="row align-items-center gy-5">
+        <div class="col-lg-6">
+          <p class="eyebrow">Data Structures &amp; Algorithms · Aug – Dec 2025</p>
+          <h1 class="hero-title">A constraint solved<br><span class="text-accent">one cell at a time.</span></h1>
+          <p class="hero-lede">
+            A from-scratch implementation of recursive backtracking, the algorithm that searches a problem space by trying a choice, recursing, and undoing it the instant it breaks a rule.
+            This project applies it to Sudoku — with real-time hash-set validation and a fully interactive 9×9 board.
+          </p>
+          <div class="hero-actions">
+            <a href="#solver" class="btn btn-accent btn-lg">Try the Solver</a>
+            <a href="#how-it-works" class="btn btn-outline-light btn-lg">See the Algorithm</a>
+          </div>
+          <ul class="hero-stats list-unstyled">
+            <li><span class="stat-num">81</span><span class="stat-label">grid cells</span></li>
+            <li><span class="stat-num">O(9⁸¹)</span><span class="stat-label">naive search space</span></li>
+            <li><span class="stat-num">3</span><span class="stat-label">hash sets for validation</span></li>
+          </ul>
+        </div>
+        <div class="col-lg-6">
+          <div class="hero-visual" aria-hidden="true">
+            <div class="mini-grid" id="heroMiniGrid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ SOLVER ============ -->
+  <main>
+    <section id="solver" class="solver-section">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">01 — Interactive</p>
+          <h2>Build a puzzle. Watch it get solved.</h2>
+          <p class="section-sub">Enter your own numbers (1–9) or load a sample puzzle, then run the backtracking solver and watch the board fill in real time.</p>
+        </div>
+
+        <div class="row gy-4 gx-5 align-items-start">
+          <!-- Board -->
+          <div class="col-lg-7">
+            <div class="board-shell">
+              <div id="board" class="sudoku-board" role="grid" aria-label="Sudoku board"></div>
+              <div id="boardMessage" class="board-message" role="status" aria-live="polite"></div>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="col-lg-5">
+            <div class="control-panel">
+              <h3 class="panel-title">Controls</h3>
+
+              <div class="control-group">
+                <label for="sampleSelect" class="control-label">Sample puzzle</label>
+                <select id="sampleSelect" class="form-select">
+                  <option value="">— Select difficulty —</option>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+
+              <div class="control-buttons">
+                <button id="solveBtn" class="btn btn-accent">
+                  <span class="btn-icon">▶</span> Solve
+                </button>
+                <button id="validateBtn" class="btn btn-outline-light">
+                  <span class="btn-icon">✓</span> Validate
+                </button>
+                <button id="clearBtn" class="btn btn-outline-light">
+                  <span class="btn-icon">⟲</span> Clear
+                </button>
+              </div>
+
+              <div class="control-group">
+                <label for="speedRange" class="control-label">
+                  Animation speed
+                  <span id="speedValue" class="control-label-value">Medium</span>
+                </label>
+                <input type="range" class="form-range" id="speedRange" min="1" max="3" value="2" step="1">
+              </div>
+
+              <div class="stats-card" id="statsCard">
+                <div class="stats-row">
+                  <span class="stats-key">Status</span>
+                  <span class="stats-val" id="statStatus">Idle</span>
+                </div>
+                <div class="stats-row">
+                  <span class="stats-key">Cells filled</span>
+                  <span class="stats-val" id="statFilled">0 / 81</span>
+                </div>
+                <div class="stats-row">
+                  <span class="stats-key">Backtrack steps</span>
+                  <span class="stats-val" id="statSteps">0</span>
+                </div>
+                <div class="stats-row">
+                  <span class="stats-key">Solve time</span>
+                  <span class="stats-val" id="statTime">—</span>
+                </div>
+              </div>
+
+              <p class="control-hint">
+                Tip: click any empty cell and type a digit. The solver treats your entries as fixed clues and only fills the rest.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ HOW IT WORKS ============ -->
+    <section id="how-it-works" class="how-section">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">02 — Under the Hood</p>
+          <h2>Two structures doing the heavy lifting</h2>
+          <p class="section-sub">The solver leans on two core DSA ideas: depth-first recursive backtracking to search the solution space, and hash sets to validate constraints in constant time.</p>
+        </div>
+
+        <div class="row gy-4">
+          <div class="col-md-6">
+            <div class="concept-card">
+              <span class="concept-index">01</span>
+              <h3>Recursive Backtracking</h3>
+              <p>
+                The solver scans for the next empty cell, tries each candidate digit 1–9, and recurses into the next empty cell.
+                If a branch leads to a dead end, it backtracks: undo the last placement and try the next candidate.
+                This depth-first search guarantees a correct solution (when one exists) without brute-forcing every permutation.
+              </p>
+              <pre class="code-block"><code>function solve(grid):
+    cell = findEmptyCell(grid)
+    if cell is null:
+        return true            // solved
+    for digit in 1..9:
+        if isValid(grid, cell, digit):
+            place(grid, cell, digit)
+            if solve(grid):
+                return true
+            undo(grid, cell)    // backtrack
+    return false                // trigger backtrack upstream</code></pre>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="concept-card">
+              <span class="concept-index">02</span>
+              <h3>Hash Set Validation</h3>
+              <p>
+                Every row, column, and 3×3 box keeps its own <code>Set</code> of digits already placed.
+                Checking whether a digit is safe to place is an O(1) lookup against three sets instead of re-scanning
+                27 cells on every attempt, which is what keeps the search responsive even as it backtracks heavily.
+              </p>
+              <pre class="code-block"><code>const rows = Array.from({length:9}, () => new Set());
+const cols = Array.from({length:9}, () => new Set());
+const boxes = Array.from({length:9}, () => new Set());
+
+function isValid(r, c, val) {
+  const b = boxIndex(r, c);
+  return !rows[r].has(val)
+      && !cols[c].has(val)
+      && !boxes[b].has(val);
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COMPLEXITY ============ -->
+    <section id="complexity" class="complexity-section">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">03 — Algorithmic Cost</p>
+          <h2>What backtracking actually saves you</h2>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table complexity-table">
+            <thead>
+              <tr>
+                <th>Approach</th>
+                <th>Time Complexity</th>
+                <th>Space Complexity</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Brute force (try every digit, every cell)</td>
+                <td><code>O(9^81)</code></td>
+                <td><code>O(1)</code></td>
+                <td>No pruning — every dead branch is explored to completion.</td>
+              </tr>
+              <tr>
+                <td>Recursive backtracking (this project)</td>
+                <td><code>O(9^m)</code> worst case*</td>
+                <td><code>O(m)</code> recursion depth</td>
+                <td>Prunes a branch the moment a constraint is violated, where <em>m</em> is the count of empty cells.</td>
+              </tr>
+              <tr>
+                <td>Constraint validation per placement</td>
+                <td><code>O(1)</code></td>
+                <td><code>O(1)</code> per set</td>
+                <td>Hash set lookups replace O(n) row/column/box scans.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-footnote">*Worst case remains exponential in theory, but constraint propagation from filled cells prunes the practical search tree dramatically for valid puzzles.</p>
+      </div>
+    </section>
+
+    <!-- ============ TECH STACK ============ -->
+    <section class="stack-section">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">04 — Built With</p>
+          <h2>Tech Stack</h2>
+        </div>
+        <div class="stack-pills">
+          <span class="pill">HTML5</span>
+          <span class="pill">CSS3</span>
+          <span class="pill">JavaScript (ES6+)</span>
+          <span class="pill">Bootstrap 5</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <div class="container">
+      <p>Built as a Data Structures &amp; Algorithms project · Aug – Dec 2025</p>
+      <p class="footer-sub">Recursive backtracking · Hash-set constraint validation · Vanilla JS</p>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="js/sudoku.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
